@@ -1,0 +1,78 @@
+from selenium import webdriver
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support import expected_conditions as ec
+from selenium.webdriver.common.action_chains import ActionChains
+
+
+class LCWaikiki:
+    # Locators
+    Anasaysa_logosu = (By.CLASS_NAME, "main-header-logo")
+    Kadın_giyim_butonu_kaban = (By.CLASS_NAME, "zone-item__anchor")
+    Kadın_kategori_butonu = (By.CLASS_NAME, "menu-header-item")
+    Ürün_clası = (By.CLASS_NAME, "product-image")  #1
+    beden = (By.CSS_SELECTOR, "a[data-tracking-label='BedenSecenekleri']")
+    Sepete_ekle_xpath = (By.XPATH, "//*[@id='pd_add_to_cart']")
+    sepet = (By.XPATH, "//*[@id='header__container']/header/div[1]/div[3]/div/div[2]/a/span")
+
+    # Assert Locators
+    kategori_sayfasında = (By.CLASS_NAME, "product-list-heading__product-count")
+    ürün_eklendi = (By.CLASS_NAME, "badge-circle")
+    sepet_sayfasında = (By.CLASS_NAME, "main-button")
+    anasayfa = (By.CLASS_NAME, "header__top")
+    website = "https://www.lcwaikiki.com/tr-TR/TR"
+
+    def __init__(self):
+        options = webdriver.ChromeOptions()
+        self.driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
+        self.driver.get(self.website)
+        self.driver.maximize_window()
+        self.wait = WebDriverWait(self.driver, 10)
+        self.actions = ActionChains(self.driver)
+
+    def test_navigate(self):
+        assert self.wait.until( 
+            ec.presence_of_element_located(self.anasayfa)).is_displayed(), "Anasayfada değiliz."
+
+        self.actions.move_to_element(self.wait.until(ec.presence_of_element_located(self.Kadın_kategori_butonu ))).click(
+            self.wait.until(ec.presence_of_element_located(self.Kadın_giyim_butonu_kaban))).perform()
+
+        assert "ürün listelendi." in self.wait.until(
+            ec.presence_of_element_located(self.kategori_sayfasında)).text, "kategari sayfasında değiliz."
+
+        self.wait.until(ec.presence_of_all_elements_located(self.Ürün_clası))[1].click()
+        assert self.wait.until(
+            ec.presence_of_element_located(self.Sepete_ekle_xpath)).is_displayed(), "Ürün sayfasında değiliz"
+
+        for size in self.wait.until(ec.presence_of_all_elements_located(self.beden)):
+            if (size.get_attribute("class")) != "disabledNotSelected" :
+                size.click()
+                break
+
+        self.wait.until(ec.presence_of_all_elements_located(self.beden))
+
+
+        self.wait.until(ec.presence_of_element_located(self.Sepete_ekle_xpath)).click()
+        assert int(
+            self.wait.until(ec.presence_of_element_located(
+                self.ürün_eklendi)).text) > 0, "ürün sepette değil"
+
+        self.wait.until(ec.presence_of_all_elements_located(self.sepet))[1].click()
+        assert self.wait.until(
+            ec.presence_of_element_located(self.sepet_sayfasında)).is_displayed(), "sepet sayfasında değiliz"
+
+        self.wait.until(ec.presence_of_element_located(self.Anasaysa_logosu)).click()
+        assert self.wait.until(
+            ec.presence_of_element_located(self.anasayfa)).is_displayed(), "Anasayfada değiliz"
+
+    def tear_down(self):
+        self.driver.quit()
+
+
+waikiki_test = LCWaikiki()
+
+waikiki_test.test_navigate()
+
+waikiki_test.tear_down()
